@@ -2,35 +2,25 @@ from nicegui import ui
 import requests
 import math
 
-# =======================
-# UTILITY FUNCTIONS
-# =======================
 def wind_to_uv(speed_kt, direction_deg):
-    """Convert wind speed/direction to u/v components."""
-    rad = math.radians(direction_deg)
-    u = -speed_kt * math.sin(rad)
-    v = -speed_kt * math.cos(rad)
-    return u, v
+"""Convert wind speed/direction to u/v components."""
+rad = math.radians(direction_deg)
+u = -speed_kt * math.sin(rad)
+v = -speed_kt * math.cos(rad)
+return u, v
 
 def calculate_lcl(temp_c, dewpoint_c):
-    """Approximate LCL height in meters using Bolton (1980) formula."""
-    if temp_c is None or dewpoint_c is None:
-        return None
-    delta = temp_c - dewpoint_c
-    lcl = (temp_c - dewpoint_c) / 0.008
+"""Approximate LCL height in meters using Bolton (1980) formula."""
+if temp_c is None or dewpoint_c is None:
+   return None
+delta = temp_c - dewpoint_c
+lcl = (temp_c - dewpoint_c) / 0.008
     return max(lcl, 0)
 
 KMH_TO_KT = 0.539957
 MM_TO_IN = 0.0393701
+LAT, LON = 39.29, -76.61  
 
-# =======================
-# DEFAULT LOCATION
-# =======================
-LAT, LON = 39.29, -76.61  # Baltimore
-
-# =======================
-# FETCH & ANALYZE FUNCTION
-# =======================
 def fetch_and_analyze():
     url = (
         f"https://api.open-meteo.com/v1/forecast"
@@ -52,9 +42,6 @@ def fetch_and_analyze():
 
         alerts = []
 
-        # =======================
-        # HOURLY FLAGS
-        # =======================
         for i in range(len(data['time'])):
             time_str = data['time'][i]
 
@@ -78,7 +65,6 @@ def fetch_and_analyze():
             else:
                 shear_03_inst = 0
 
-            # Deep-layer shear (0–6 km)
             spd_300 = (data['wind_speed_300hPa'][i] or 0) * KMH_TO_KT
             dir_300 = data['wind_direction_300hPa'][i]
 
@@ -106,9 +92,7 @@ def fetch_and_analyze():
             if len(flags) >= 2:
                 alerts.append(f"{time_str}: {', '.join(flags)}")
 
-        # =======================
-        # 24-HOUR SUMMARY
-        # =======================
+        
         cape_vals = [c for c in data['cape'][:24] if c is not None]
         max_cape = max(cape_vals) if cape_vals else 0
 
@@ -144,17 +128,15 @@ def fetch_and_analyze():
         avg_shear_03 = sum(shear_03) / len(shear_03) if shear_03 else 0
         avg_deep_shear = sum(shear_06) / len(shear_06) if shear_06 else 0
 
-        # =======================
-        # RISK SCORE CALCULATION
-        # =======================
+
         score = 0
 
-        # Instability
+      
         if max_cape >= 500: score += 1
         if max_cape >= 1500: score += 2
         if max_cape >= 2500: score += 2
 
-        # Shear contribution
+    
         if avg_shear_03 >= 25: score += 1
         if avg_deep_shear >= 40: score += 2
 
@@ -173,11 +155,9 @@ def fetch_and_analyze():
         risk_level = "Low"
         if score >= 3: risk_level = "Marginal"
         if score >= 5: risk_level = "Moderate"
-        if score >= 7: risk_level = "High, Severe Potential!"
+        if score >= 7: risk_level = "High"
 
-        # =======================
-        # UI OUTPUT
-        # =======================
+     
         result_container.clear()
         with result_container:
             color = "text-green-500"
@@ -205,9 +185,7 @@ def fetch_and_analyze():
         ui.label(f"Error: {e}").classes("text-red-600")
 
 
-# =======================
-# UI LAYOUT
-# =======================
+#ui
 ui.label("Severe Weather Setup Checker").classes("text-4xl font-bold text-center mt-4")
 ui.label("Powered by Open-Meteo • Professional Severe Weather Analysis").classes("text-center mb-6")
 
